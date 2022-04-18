@@ -29,44 +29,61 @@ protocol MoneyProtocol{
     var currency: Currency{ get }
     var amount: Float { set get }
     func getMoney() -> Float
-    func sum<M: MoneyProtocol>(in: M) -> Float
-        where M.Currency == Currency
+    mutating func addMoney(_ value: Float)
+
 }
 
+struct BahtCurrency: MoneyProtocol{
+    typealias Currency = String
+    typealias Price = Float
 
-protocol TradableProtocol{
-    associatedtype Item
-    // associatedtype Price
-    var item: Item{set get}
-    var price: Float { set get}
+    var currency: Currency = "Baht"
+    var amount: Price
 
-    func getItem() -> Item
-    func getPrice() -> Float
+    init(amount: Price){
+        currency = "Baht"
+        self.amount = amount
+    }
+
+    func getMoney() -> Price{
+        return self.amount
+    }
+    mutating func addMoney(_ value: Float){
+        self.amount += value
+    }
 }
+
+// extension เพื่อสร้างฟังก์ชั่นและกำหนดค่า default
+extension MoneyProtocol{
+    mutating func changeAmount(to value: Float){
+        self.amount = value
+    }
+}
+
 
 protocol MarketProtocol{
-    associatedtype ProductType
+    associatedtype ProductType: ProductProtocol
+    var product: [ProductType] { get }
     var totalProduct: Int { get }
     subscript(index: Int) -> ProductType { get }
 
-    // func buy<T: TradableProtocol, M: MoneyProtocol>(product: T, with money: M) -> T?
-        // where M.Price == T.Price
-    func sell<T: ProductProtocol, M: MoneyProtocol>(product: T, for money: inout M)
-        // where M.Currency: TradableProtocol
+    func getProductInMarket(name: String) -> ProductType?
+    func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag)
+        // where User: MoneyProtocol
 }
 
 // ===========================================
 // extension array หาชื่อง่ายๆ
 protocol ProductDetailToArrayProtocol: Sequence{
     var count: Int { get }
-    func take(_ product: String) -> Bool
+    func haveThis(_ product: String) -> Bool
     func allProduct() -> Void
     // associatedtype Item
     // subscript(i: Int) -> Item { get }
 }
 
 extension Array: ProductDetailToArrayProtocol where Element: ProductProtocol{
-    func take(_ product: String) -> Bool{
+    func haveThis(_ product: String) -> Bool{
         for item in self{
             if (item.getProductName().lowercased() == product.lowercased()){
                 return true
@@ -74,6 +91,17 @@ extension Array: ProductDetailToArrayProtocol where Element: ProductProtocol{
         }
         return false
         
+    }
+
+    func getItem(_ target: String) -> Int?{
+        let target = target.lowercased()
+        let productName = self.map{ $0.getProductName().lowercased() }
+        
+        if(productName.contains(target)){
+            let result = productName.firstIndex{ $0 == target }
+            return result
+        }
+        return nil
     }
 
     func allProduct(){
@@ -98,11 +126,6 @@ extension ProductDetailToArrayProtocol{
 }
 
 
-extension MarketProtocol where ProductType == Product{
-    func say(){
-        print("SSS")
-    }
-}
 
 
 // ===========================================
@@ -150,7 +173,46 @@ func buildGame<T: GameProtocol>() -> T{
 
 
 
+protocol UserProtocol{
+    var name: String { get }
 
+    func getName() -> String
+}
+
+
+struct BasicUser: UserProtocol{
+    var name: String
+
+    func getName() -> String{
+        return self.name
+    }
+}
+
+struct Buyer: UserProtocol{
+    var name: String
+    var bag: BahtCurrency
+    
+    func getName() -> String{
+        return self.name
+    }
+}
+
+struct Account{
+    var user: [UserProtocol]
+    
+    init(){
+        user = []
+    }
+}
+
+
+// func addMoneyToAccount(money: Int) -> some UserProtocol{
+//     return BasicUser(name:"A")
+// }
+
+
+
+// =================================
 
 
 // สร้างตัวคิดเงิน
@@ -194,7 +256,8 @@ struct Product: ProductProtocol{
 
 // สร้าง market มี properties เก็บข้อมูลเป็น [Item]
 
-class Market<Item>: MarketProtocol where Item: ProductProtocol{
+// class Market<Item>: MarketProtocol where Item: ProductProtocol{
+class Market<Item: ProductProtocol>: MarketProtocol{
     typealias ProductType = Item
     var product: [ProductType]
     // var product: [Product]
@@ -228,12 +291,52 @@ class Market<Item>: MarketProtocol where Item: ProductProtocol{
         }
         return result
     }
+    
+    func getProductInMarket(name target: String) -> ProductType?{
+        if let index = self.product.getItem(target){
+            return self.product[index]
+        }
+        return nil
+    }
 
-    func sell<T: ProductProtocol, M: MoneyProtocol>(product: T, for money: inout M){
+    func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag){
+        let productName = product.getProductName()
+
+        guard self.product.haveThis(productName) else {
+            print("Item doesn't exist")
+            return 
+        }
         
+        let oldMoney = bag.getMoney()
+        let productPrice = product.getProductPrice()
+        let result = (oldMoney - productPrice)
+
+        if(result > 0){
+            bag.changeAmount(to: result)
+        }else{
+            print("not enough money")
+        }
+    }
+
+    func sellItemInMarket<Bag: MoneyProtocol>(name: String, to bag: inout Bag){
+        guard self.product.haveThis(name) else {
+            print("Item doesn't exist")
+            return 
+        }
+        
+        guard let index = self.product.getItem(name) else { return }
+
+        let oldMoney = bag.getMoney()
+        let productPrice = product[index].getProductPrice()
+        let result = (oldMoney - productPrice)
+
+        if(result > 0){
+            bag.changeAmount(to: result)
+        }else{
+            print("not enough money")
+        }
     }
 }
-
 
 
 var market = Market<Product>()
@@ -242,6 +345,7 @@ var apple = Product(name: "Apple",price: 20)
 
 market.product.append(mango)
 market.product.append(apple)
+// market.product.append(apple)
 
 for item in market.product{
     print(item)
@@ -255,7 +359,7 @@ market.productDetail(number: 1)
 
 
 // market.product.allProduct()
-// print(market.product.take("apple"))
+// print(market.product.haveThis("apple"))
 
 func calculatePrice<Item: ProductProtocol>(of item: Item) -> Float
     where Item.Currency == Float{
@@ -265,4 +369,26 @@ func calculatePrice<Item: ProductProtocol>(of item: Item) -> Float
 }
 
 
-market.say()
+
+
+
+var naj = BasicUser(name: "Naj")
+
+var userAccount = Account()
+userAccount.user.append(naj)
+
+print(userAccount)
+
+var john = Buyer(
+    name: "John",
+    bag: BahtCurrency(amount: 1000)
+    )
+
+
+var productApple = market.getProductInMarket(name: "Apple")
+print(productApple!)
+
+print(john.bag.amount)
+market.sell(product: productApple!, to: &john.bag)
+market.sellItemInMarket(name: "mango", to: &john.bag)
+print(john.bag.amount)
