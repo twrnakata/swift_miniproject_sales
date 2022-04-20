@@ -25,27 +25,27 @@ protocol ProductProtocol: PriceProtocol{
 
 
 protocol MoneyProtocol{
-    associatedtype Currency
-    var currency: Currency{ get }
+    // associatedtype Currency
+    var currency: String{ get }
     var amount: Float { set get }
     func getMoney() -> Float
     mutating func addMoney(_ value: Float)
 
 }
 
-struct BahtCurrency: MoneyProtocol{
-    typealias Currency = String
-    typealias Price = Float
+struct MoneyCurrency: MoneyProtocol{
+    // typealias Currency = String
+    // typealias Price = Float
 
-    var currency: Currency = "Baht"
-    var amount: Price
+    var currency: String
+    var amount: Float
 
-    init(amount: Price){
-        currency = "Baht"
-        self.amount = amount
-    }
+    // init(amount: Float){
+    //     self.currency = "Baht"
+    //     self.amount = amount
+    // }
 
-    func getMoney() -> Price{
+    func getMoney() -> Float{
         return self.amount
     }
     mutating func addMoney(_ value: Float){
@@ -114,18 +114,6 @@ extension Array: ProductDetailToArrayProtocol where Element: ProductProtocol{
     }
 }
 
-extension ProductDetailToArrayProtocol{
-        // func average() -> Float{
-        //     var sum: Float = 0.0
-        //     for index in 0..<count {
-        //         // sum += Double(self[index])
-
-        //     }
-        //     return sum / Float(count)
-        // }
-}
-
-
 
 
 // ===========================================
@@ -190,7 +178,7 @@ struct BasicUser: UserProtocol{
 
 struct Buyer: UserProtocol{
     var name: String
-    var bag: BahtCurrency
+    var bag: MoneyCurrency
     
     func getName() -> String{
         return self.name
@@ -339,19 +327,27 @@ class Market<Item: ProductProtocol>: MarketProtocol{
 }
 
 
+// กำหนด type เป็น Product
 var market = Market<Product>()
-var mango = Product(name: "Mango",price: 10)
-var apple = Product(name: "Apple",price: 20)
+
+var mango = Product(name: "Mango", price: 10)
+var apple = Product(name: "Apple", price: 20)
+
 
 market.product.append(mango)
 market.product.append(apple)
-// market.product.append(apple)
+// market.product.append(banana)
+
 
 for item in market.product{
     print(item)
 }
 
-var cal = Calculator(vat: 1.09)
+func createCalculator(withVat value: Float) -> some CalculatorProtocol{
+    Calculator(vat: value)
+}
+
+var cal = createCalculator(withVat: 1.09)
 market.calculator = cal
 
 
@@ -379,9 +375,18 @@ userAccount.user.append(naj)
 
 print(userAccount)
 
+
+func createThaiBaht(amount: Float) -> some MoneyProtocol{
+    MoneyCurrency(currency: "Baht", amount: amount)
+}
+
+var s = createThaiBaht(amount:2000)
+print(s)
+
 var john = Buyer(
     name: "John",
-    bag: BahtCurrency(amount: 1000)
+    // bag: s as! MoneyCurrency
+    bag: MoneyCurrency(currency: "Baht", amount: 1000)
     )
 
 
