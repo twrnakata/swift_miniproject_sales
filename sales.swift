@@ -66,10 +66,9 @@ protocol MarketProtocol{
     var product: [ProductType] { get }
     var totalProduct: Int { get }
     subscript(index: Int) -> ProductType { get }
-
+    subscript(name: String) -> ProductType? { get }
     func getProductInMarket(name: String) -> ProductType?
     func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag)
-        // where User: MoneyProtocol
 }
 
 // ===========================================
@@ -248,7 +247,7 @@ struct Product: ProductProtocol{
 class Market<Item: ProductProtocol>: MarketProtocol{
     typealias ProductType = Item
     var product: [ProductType]
-    // var product: [Product]
+    // var product: [Product] // same result
     var calculator: CalculatorProtocol!
     var totalProduct: Int { return product.count }
 
@@ -261,17 +260,39 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         self.calculator = market.calculator
     }
 
-    convenience init(product: Item){
+    convenience init(product: ProductType){
         self.init()
-        self.product.append(product)
+
+        if(isExist(product) == false){
+            self.product.append(product)
+        }
     }
 
-    convenience init(product: Item, calculator: CalculatorProtocol){
-        self.init()
-        self.product.append(product)
+    convenience init(product: ProductType, calculator: CalculatorProtocol){
+        self.init(product: product)
+        self.calculator = calculator
+    }
+
+    // init array
+    init(product: [ProductType]){
+        self.product = []
+        for (index, item) in product.enumerated(){
+            if(isExist(product[index]) == false){
+                self.product.append(item)
+            }
+        }
+    }
+
+    // init array
+    convenience init(product: [ProductType], calculator: CalculatorProtocol){
+        self.init(product: product)
         self.calculator = calculator
     }
     
+    
+    private func isExist(_ product: ProductType) -> Bool{
+        return (self.product.haveThis(product.getProductName())) ? true : false
+    }
 
     func productDetail(number: Int){
         guard number >= 0, number < totalProduct, !(product.isEmpty) else { return }
