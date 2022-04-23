@@ -341,36 +341,14 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         }
     }
 
-    
-    func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag){
-        let productName = product.getProductName()
-
-        guard self.product.haveThis(productName) else {
-            print("Item doesn't exist")
-            return 
-        }
-        
-        let oldMoney = bag.getMoney()
-        let productPrice = product.getProductPrice()
-        let result = (oldMoney - productPrice)
-
-        if(result > 0){
-            bag.changeAmount(to: result)
-        }else{
-            print("not enough money")
-        }
-    }
-
     func sell<Bag: MoneyProtocol>(name: String, to bag: inout Bag){
         guard self.product.haveThis(name) else {
             print("Item doesn't exist")
             return 
         }
         
-        guard let index = self.product.getIndex(name) else { return }
-
         let oldMoney = bag.getMoney()
-        let productPrice = self.getProductPrice(number: index)
+        let productPrice = self.getProductPrice(name: name)
         let result = (oldMoney - productPrice)
 
         if(result > 0){
@@ -379,6 +357,10 @@ class Market<Item: ProductProtocol>: MarketProtocol{
             print("not enough money")
         }
 
+    }
+
+    func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag){
+        self.sell(name: product.getProductName(), to: &bag)
     }
 
     func average() -> Float{
@@ -392,8 +374,7 @@ class Market<Item: ProductProtocol>: MarketProtocol{
 
 postfix operator +++
 
-// ทำ subcript เป็น string คืนค่าสินค้า
-// สินค้ามีเพียงชิ้นเดียว
+
 // ทำฟังก์ชั่นคิดราคาสินค้าง่ายๆ
 // owned ใส่ user อาชีพ? ที่อยู่?
 
