@@ -93,7 +93,7 @@ extension Array: ProductDetailToArrayProtocol where Element: ProductProtocol{
         
     }
 
-    func getItem(_ target: String) -> Int?{
+    func getIndex(_ target: String) -> Int?{
         let target = target.lowercased()
         let productName = self.map{ $0.getProductName().lowercased() }
         
@@ -276,15 +276,8 @@ class Market<Item: ProductProtocol>: MarketProtocol{
     func productDetail(number: Int){
         guard number >= 0, number < totalProduct, !(product.isEmpty) else { return }
         
-        print("Product Name: \(product[number].productName)")
+        print("Product Name: \(product[number].getProductName())")
         print("Product Price(Sale): \(calculator.calculatePrice(of: product[number]))")
-    }
-
-    func getProductPrice(name: String) -> Float{
-        if let index = self.product.getItem(name){
-            return self.getProductPrice(number: index)
-        }
-        return 0.0
     }
 
     func getProductPrice(number: Int) -> Float{
@@ -292,11 +285,27 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         
         return self.calculator.calculatePrice(of: self[number])
     }
+    
+    func getProductPrice(name: String) -> Float{
+        if let index = self.product.getIndex(name){
+            return self.getProductPrice(number: index)
+        }
+        return 0.0
+    }
 
     subscript(index: Int) -> ProductType{
         return self.product[index]
     }
+
+    subscript(name: String) -> ProductType?{
+        guard let index = self.product.getIndex(name) else { return nil }
+        return self.product[index]
+    }
     
+    func getProductInMarket(name: String) -> ProductType?{
+        return self[name]
+    }
+
     func average() -> Float{
         var result: Float = 0.0
         for index in 0..<totalProduct{
@@ -305,13 +314,6 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         return result
     }
     
-    func getProductInMarket(name target: String) -> ProductType?{
-        if let index = self.product.getItem(target){
-            return self[index]
-        }
-        return nil
-    }
-
     func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag){
         let productName = product.getProductName()
 
@@ -331,13 +333,13 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         }
     }
 
-    func sellItemInMarket<Bag: MoneyProtocol>(name: String, to bag: inout Bag){
+    func sell<Bag: MoneyProtocol>(name: String, to bag: inout Bag){
         guard self.product.haveThis(name) else {
             print("Item doesn't exist")
             return 
         }
         
-        guard let index = self.product.getItem(name) else { return }
+        guard let index = self.product.getIndex(name) else { return }
 
         let oldMoney = bag.getMoney()
         let productPrice = self.getProductPrice(number: index)
@@ -352,6 +354,11 @@ class Market<Item: ProductProtocol>: MarketProtocol{
 }
 
 postfix operator +++
+
+// ทำ subcript เป็น string คืนค่าสินค้า
+// สินค้ามีเพียงชิ้นเดียว
+// ทำฟังก์ชั่นคิดราคาสินค้าง่ายๆ
+// owned ใส่ user อาชีพ? ที่อยู่?
 
 extension Market{
     // เพิ่มสินค้าจากทั้งสองร้านไปยังอีกร้าน
@@ -462,7 +469,7 @@ print(productApple!)
 
 print(john.bag.amount)
 fruitMarket.sell(product: productApple!, to: &john.bag)
-fruitMarket.sellItemInMarket(name: "mango", to: &john.bag)
+fruitMarket.sell(name: "mango", to: &john.bag)
 print("mango price: \(fruitMarket.getProductPrice(name: "mango"))")
 print(john.bag.amount)
 
