@@ -25,41 +25,14 @@ protocol ProductProtocol: PriceProtocol{
 
 
 protocol MoneyProtocol{
-    // associatedtype Currency
-    var currency: String{ get }
+    associatedtype Currency
+    var currency: Currency{ get }
+    // var currency: String{ get }
     var amount: Float { set get }
     func getMoney() -> Float
     mutating func addMoney(_ value: Float)
 
 }
-
-struct MoneyCurrency: MoneyProtocol{
-    // typealias Currency = String
-    // typealias Price = Float
-
-    var currency: String
-    var amount: Float
-
-    // init(amount: Float){
-    //     self.currency = "Baht"
-    //     self.amount = amount
-    // }
-
-    func getMoney() -> Float{
-        return self.amount
-    }
-    mutating func addMoney(_ value: Float){
-        self.amount += value
-    }
-}
-
-// extension เพื่อสร้างฟังก์ชั่นและกำหนดค่า default
-extension MoneyProtocol{
-    mutating func changeAmount(to value: Float){
-        self.amount = value
-    }
-}
-
 
 protocol MarketProtocol{
     associatedtype ProductType: ProductProtocol
@@ -70,7 +43,7 @@ protocol MarketProtocol{
     func getProductInMarket(name: String) -> ProductType?
     func addProduct(_ product: ProductType)
     func removeProduct(name: String)
-    func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag)
+    func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to wallet: inout Bag)
 }
 
 // ===========================================
@@ -177,12 +150,25 @@ struct BasicUser: UserProtocol{
     }
 }
 
-struct Buyer: UserProtocol{
+class Customer: UserProtocol{
     var name: String
-    var bag: MoneyCurrency
+    var wallet: CustomerWallet? // strong ref
+
+    init(name: String){
+        self.name = name
+    }
     
+    init(name: String, wallet: CustomerWallet){
+        self.name = name
+        self.wallet = wallet
+    }
+
     func getName() -> String{
         return self.name
+    }
+
+    deinit{
+        print("Delete Customer name: \(self.name)")
     }
 }
 
@@ -194,6 +180,44 @@ struct Account{
     }
 }
 
+
+
+class CustomerWallet: MoneyProtocol{
+    var currency: String
+    var amount: Float
+    unowned let owner: Customer
+
+    init(currency: String, amount: Float, owner: Customer){
+        self.currency = currency
+        self.amount = amount
+        self.owner = owner
+    }
+
+    convenience init(amount: Float, owner: Customer){
+        self.init(currency: "Baht", amount: amount, owner: owner)
+    }
+
+    func getMoney() -> Float{
+        return self.amount
+    }
+    func addMoney(_ value: Float){
+        self.amount += value
+    }
+
+    deinit{
+        print("=====")
+        print("Delete Wallet with detail:")
+        print("Currency: \(self.currency), Amount: \(self.amount)")
+        print("=====")
+    }
+}
+
+// extension เพื่อสร้างฟังก์ชั่นและกำหนดค่า default
+extension MoneyProtocol{
+    mutating func changeAmount(to value: Float){
+        self.amount = value
+    }
+}
 
 // func addMoneyToAccount(money: Int) -> some UserProtocol{
 //     return BasicUser(name:"A")
@@ -341,26 +365,26 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         }
     }
 
-    func sell<Bag: MoneyProtocol>(name: String, to bag: inout Bag){
+    func sell<Bag: MoneyProtocol>(name: String, to wallet: inout Bag){
         guard self.product.haveThis(name) else {
             print("Item doesn't exist")
             return 
         }
         
-        let oldMoney = bag.getMoney()
+        let oldMoney = wallet.getMoney()
         let productPrice = self.getProductPrice(name: name)
         let result = (oldMoney - productPrice)
 
         if(result > 0){
-            bag.changeAmount(to: result)
+            wallet.changeAmount(to: result)
         }else{
             print("not enough money")
         }
 
     }
 
-    func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag){
-        self.sell(name: product.getProductName(), to: &bag)
+    func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to wallet: inout Bag){
+        self.sell(name: product.getProductName(), to: &wallet)
     }
 
     func average() -> Float{
@@ -374,9 +398,6 @@ class Market<Item: ProductProtocol>: MarketProtocol{
 
 postfix operator +++
 
-
-// ทำฟังก์ชั่นคิดราคาสินค้าง่ายๆ
-// owned ใส่ user อาชีพ? ที่อยู่?
 
 extension Market{
     // เพิ่มสินค้าจากทั้งสองร้านไปยังอีกร้าน
@@ -445,18 +466,12 @@ fruitMarket.calculator = cal
 
 fruitMarket.productDetail(number: 1)
 
-
-// fruitMarket.product.allProduct()
-// print(fruitMarket.product.haveThis("apple"))
-
 func calculatePrice<Item: ProductProtocol>(of item: Item) -> Float
     where Item.Currency == Float{
     guard item.getProductPrice() > 0.0 else { return 1.0 }
     // return (item.getProductPrice() * vat)
     return 1
 }
-
-
 
 
 
@@ -467,29 +482,24 @@ userAccount.user.append(kaning)
 
 print(userAccount)
 
-
-func createThaiBaht(amount: Float) -> some MoneyProtocol{
-    MoneyCurrency(currency: "Baht", amount: amount)
+func createThaiBaht(currency: String, amount: Float, owner: Customer) -> some MoneyProtocol{
+    CustomerWallet(currency: currency, amount: amount, owner: owner)
 }
 
-var s = createThaiBaht(amount:2000)
-print(s)
+var john: Customer? = Customer(name: "John")
 
-var john = Buyer(
-    name: "John",
-    // bag: s as! MoneyCurrency
-    bag: MoneyCurrency(currency: "Baht", amount: 1000)
-    )
-
+// downcast to CustomerWallet
+var thaiBahtForJohn: CustomerWallet? = (createThaiBaht(currency: "Baht", amount:2000, owner: john!)) as? CustomerWallet
+john?.wallet = thaiBahtForJohn
 
 var productApple = fruitMarket.getProductInMarket(name: "Apple")
 print(productApple!)
 
-print(john.bag.amount)
-fruitMarket.sell(product: productApple!, to: &john.bag)
-fruitMarket.sell(name: "mango", to: &john.bag)
+print(john!.wallet!.amount)
+fruitMarket.sell(product: productApple!, to: &john!.wallet!)
+fruitMarket.sell(name: "mango", to: &john!.wallet!)
 print("mango price: \(fruitMarket.getProductPrice(name: "mango"))")
-print(john.bag.amount)
+print(john!.wallet!.amount)
 
 
 var secondMarket = Market<Product>()
@@ -502,3 +512,15 @@ print(secondMarket == newMarket)
 print(secondMarket.product)
 secondMarket+++
 print(secondMarket.product)
+
+
+thaiBahtForJohn = nil
+print(thaiBahtForJohn?.owner.name) // nil
+print(john?.wallet?.amount)
+print(john?.name)
+
+
+print("===============")
+john = nil
+print("===============")
+
