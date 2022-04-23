@@ -68,6 +68,8 @@ protocol MarketProtocol{
     subscript(index: Int) -> ProductType { get }
     subscript(name: String) -> ProductType? { get }
     func getProductInMarket(name: String) -> ProductType?
+    func addProduct(_ product: ProductType)
+    func removeProduct(name: String)
     func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag)
 }
 
@@ -327,13 +329,18 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         return self[name]
     }
 
-    func average() -> Float{
-        var result: Float = 0.0
-        for index in 0..<totalProduct{
-            result += self[index].getProductPrice()
+    func addProduct(_ product: ProductType){
+        if(isExist(product) == false){
+            self.product.append(product)
         }
-        return result
     }
+    
+    func removeProduct(name: String){
+        if let index = self.product.getIndex(name){
+            self.product.remove(at: index)
+        }
+    }
+
     
     func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to bag: inout Bag){
         let productName = product.getProductName()
@@ -371,6 +378,15 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         }else{
             print("not enough money")
         }
+
+    }
+
+    func average() -> Float{
+        var result: Float = 0.0
+        for index in 0..<totalProduct{
+            result += self[index].getProductPrice()
+        }
+        return result
     }
 }
 
