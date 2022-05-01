@@ -4,7 +4,7 @@ protocol PriceProtocol{
     mutating func updatePrice(to value: Currency)
 }
 
-// inherit PriceProtocol ลงมา แล้วทำ associatedtype เป็น Float
+// inherit PriceProtocol
 protocol ProductProtocol: PriceProtocol{
     var productName: String { get }
     var price: Float { get }
@@ -23,17 +23,18 @@ protocol ProductProtocol: PriceProtocol{
 
 
 
-
+// สร้าง protocol ทีเป็นตัวกลางแลกเปลี่ยนสินค้า
 protocol MoneyProtocol{
     associatedtype Currency
     var currency: Currency{ get }
     // var currency: String{ get }
-    var amount: Float { set get }
+    var amount: Float { get }
     func getMoney() -> Float
     mutating func addMoney(_ value: Float)
-
+    mutating func changeAmount(to value: Float)
 }
 
+// สร้าง protocol ที่กำหนดเงื่อนไขของร้านค้า
 protocol MarketProtocol{
     associatedtype ProductType: ProductProtocol
     var product: [ProductType] { get }
@@ -46,8 +47,10 @@ protocol MarketProtocol{
     func sell<Product: ProductProtocol, Bag: MoneyProtocol>(product: Product, to wallet: inout Bag)
 }
 
+
+
 // ===========================================
-// สร้าง protocol ไว้ extension array เพื่อให้หาข้อมูลใน array ตามที่ต้องการ
+// สร้าง protocol สำหรับ extension ที่ตัว array ไว้เพื่อจัดการข้อมูลที่เป็น array
 protocol ProductDetailToArrayProtocol: Sequence{
     var count: Int { get }
     func haveThis(_ product: String) -> Bool
@@ -56,6 +59,7 @@ protocol ProductDetailToArrayProtocol: Sequence{
     // subscript(i: Int) -> Item { get }
 }
 
+// extension ProductDetailToArrayProtocol ให้กับ Array
 extension Array: ProductDetailToArrayProtocol where Element: ProductProtocol{
     func haveThis(_ product: String) -> Bool{
         for item in self{
@@ -93,7 +97,12 @@ extension Array: ProductDetailToArrayProtocol where Element: ProductProtocol{
 // ===========================================
 
 
+
+
+// =================================
+
 // ใช้แค่คิดราคาสินค้า ฉะนั้นจะสนใจแต่ตัวเลข เลยไม่จำเป็นต้องรู้ชื่อสินค้า
+// ทำ protocol เหมือนเป็น type ตัวนึง ที่ช่วยเก็บสิ่งของไว้ใช้งานภายหลังร่วมกัน
 protocol CalculatorProtocol{
     // associatedtype DataType: ProductProtocol where DataType.price == DataType
     // associatedtype DataType
@@ -102,133 +111,14 @@ protocol CalculatorProtocol{
     // mutating func changeCalculate(to: Calculator)
 }
 
-// ทำ protocol เหมือนเป็น type ตัวนึง ที่ช่วยเก็บสิ่งของไว้ใช้งานภายหลังร่วมกัน
 
-// ทำตัว Product เป็น protocol type?
-// เช่น [product]: ProductProtocol
-
-
-
-protocol SellProductProtocol{
-    // func sell(product: ProductProtocol)
-}
-
-// วิธีการขายมีหลายประเภท ถ้าจะขายวิธีแรก ก็ใช้ protocol เพื่อแบ่งประเภทการขาย
-
-protocol SellProtocolInSummer{ // conform to price?
-
-}
-
-protocol SellProtocolNormal{
-    
+// สร้าง Calculator จาก opaque function
+func createCalculator(withVat value: Float) -> some CalculatorProtocol{
+    Calculator(vat: value)
 }
 
 
-
-// สร้าง Product จาก opaque function
-/*
-func buildGame<T: GameProtocol>() -> T{
-    T()
-}
-*/
-
-
-
-
-protocol UserProtocol{
-    var name: String { get }
-
-    func getName() -> String
-}
-
-
-struct BasicUser: UserProtocol{
-    var name: String
-
-    func getName() -> String{
-        return self.name
-    }
-}
-
-class Customer: UserProtocol{
-    var name: String
-    var wallet: CustomerWallet? // strong ref
-
-    init(name: String){
-        self.name = name
-    }
-    
-    init(name: String, wallet: CustomerWallet){
-        self.name = name
-        self.wallet = wallet
-    }
-
-    func getName() -> String{
-        return self.name
-    }
-
-    deinit{
-        print("Delete Customer name: \(self.name)")
-    }
-}
-
-struct Account{
-    var user: [UserProtocol]
-    
-    init(){
-        user = []
-    }
-}
-
-
-
-class CustomerWallet: MoneyProtocol{
-    var currency: String
-    var amount: Float
-    unowned let owner: Customer
-
-    init(currency: String, amount: Float, owner: Customer){
-        self.currency = currency
-        self.amount = amount
-        self.owner = owner
-    }
-
-    convenience init(amount: Float, owner: Customer){
-        self.init(currency: "Baht", amount: amount, owner: owner)
-    }
-
-    func getMoney() -> Float{
-        return self.amount
-    }
-    func addMoney(_ value: Float){
-        self.amount += value
-    }
-
-    deinit{
-        print("=====")
-        print("Delete Wallet with detail:")
-        print("Currency: \(self.currency), Amount: \(self.amount)")
-        print("=====")
-    }
-}
-
-// extension เพื่อสร้างฟังก์ชั่นและกำหนดค่า default
-extension MoneyProtocol{
-    mutating func changeAmount(to value: Float){
-        self.amount = value
-    }
-}
-
-// func addMoneyToAccount(money: Int) -> some UserProtocol{
-//     return BasicUser(name:"A")
-// }
-
-
-
-// =================================
-
-
-// สร้างตัวคิดเงิน
+// สร้างตัวคิดเงินไว้ใช้ในร้านค้า
 struct Calculator: CalculatorProtocol{
     var vat: Float
 
@@ -237,6 +127,7 @@ struct Calculator: CalculatorProtocol{
         return (item.getProductPrice() * vat)
     }
 }
+
 
 
 struct Product: ProductProtocol{
@@ -272,7 +163,7 @@ struct Product: ProductProtocol{
 // class Market<Item>: MarketProtocol where Item: ProductProtocol{
 class Market<Item: ProductProtocol>: MarketProtocol{
     typealias ProductType = Item
-    var product: [ProductType]
+    private(set) var product: [ProductType]
     // var product: [Product] // same result
     var calculator: CalculatorProtocol!
     var totalProduct: Int { return product.count }
@@ -396,8 +287,8 @@ class Market<Item: ProductProtocol>: MarketProtocol{
     }
 }
 
+// สร้าง operator +++ ไว้ใช้ใน Market
 postfix operator +++
-
 
 extension Market{
     // เพิ่มสินค้าจากทั้งสองร้านไปยังอีกร้าน
@@ -412,6 +303,7 @@ extension Market{
         first = first + second
     }
 
+    // เพิ่มราคาสินค้าเดิมขึ้นอีก 1 เท่า
     static postfix func +++ (market: inout Market){
         for index in 0..<market.totalProduct{
             let newPrice = market[index].price + market[index].price
@@ -440,47 +332,134 @@ extension Market{
 
 
 
+// สร้าง protocol ที่กำหนดข้อมูลของ User
+protocol UserProtocol{
+    var name: String { get set }
+
+    func getName() -> String
+}
+
+
+struct BasicUser: UserProtocol{
+    var name: String
+
+    func getName() -> String{
+        return self.name
+    }
+}
+
+// สร้าง class Customer โดยมี wallet เป็นกระเป๋าเงินไว้ซื้อสินค้า
+class Customer: UserProtocol{
+    var name: String
+    var wallet: CustomerWallet? // strong ref
+
+    init(name: String){
+        self.name = name
+    }
+    
+    init(name: String, wallet: CustomerWallet){
+        self.name = name
+        self.wallet = wallet
+    }
+
+    func getName() -> String{
+        return self.name
+    }
+
+    deinit{
+        print("Delete Customer name: \(self.name)")
+    }
+}
+
+struct Account{
+    var user: [UserProtocol]
+    
+    init(){
+        user = []
+    }
+
+    func printUser() -> Void{
+        for person in self.user{
+            print(person.getName(), terminator: " ")
+        }
+        print("")
+    }
+}
+
+// extension เพื่อสร้างฟังก์ชั่นและกำหนดค่า default
+extension UserProtocol{
+    mutating func changeName(to newName: String){
+        self.name = newName
+    }
+}
+
+
+
+
+
+class CustomerWallet: MoneyProtocol{
+    var currency: String
+    private(set) var amount: Float
+    unowned let owner: Customer
+
+    init(currency: String, amount: Float, owner: Customer){
+        self.currency = currency
+        self.amount = amount
+        self.owner = owner
+    }
+
+    convenience init(amount: Float, owner: Customer){
+        self.init(currency: "Baht", amount: amount, owner: owner)
+    }
+
+    func getMoney() -> Float{
+        return self.amount
+    }
+    func addMoney(_ value: Float){
+        self.amount += value
+    }
+    func changeAmount(to value: Float){
+        self.amount = value
+    }
+
+    deinit{
+        print("=====")
+        print("Delete Wallet with detail:")
+        print("Currency: \(self.currency), Amount: \(self.amount)")
+        print("=====")
+    }
+}
+
+
 // กำหนด type เป็น Product
 var fruitMarket = Market<Product>()
 
 var mango = Product(name: "Mango", price: 10)
 var apple = Product(name: "Apple", price: 20)
 
+fruitMarket.addProduct(mango)
+fruitMarket.addProduct(apple)
 
-fruitMarket.product.append(mango)
-fruitMarket.product.append(apple)
-// fruitMarket.product.append(banana)
 
 
 for item in fruitMarket.product{
     print(item)
 }
 
-func createCalculator(withVat value: Float) -> some CalculatorProtocol{
-    Calculator(vat: value)
-}
+
 
 var cal = createCalculator(withVat: 1.09)
 fruitMarket.calculator = cal
 
-
 fruitMarket.productDetail(number: 1)
-
-func calculatePrice<Item: ProductProtocol>(of item: Item) -> Float
-    where Item.Currency == Float{
-    guard item.getProductPrice() > 0.0 else { return 1.0 }
-    // return (item.getProductPrice() * vat)
-    return 1
-}
-
 
 
 var kaning = BasicUser(name: "Kaning")
 
 var userAccount = Account()
 userAccount.user.append(kaning)
-
-print(userAccount)
+userAccount.printUser()
+print("before add John")
 
 func createThaiBaht(currency: String, amount: Float, owner: Customer) -> some MoneyProtocol{
     CustomerWallet(currency: currency, amount: amount, owner: owner)
@@ -491,6 +470,13 @@ var john: Customer? = Customer(name: "John")
 // downcast to CustomerWallet
 var thaiBahtForJohn: CustomerWallet? = (createThaiBaht(currency: "Baht", amount:2000, owner: john!)) as? CustomerWallet
 john?.wallet = thaiBahtForJohn
+
+// ทดสอบใส่ john เข้าไปใน userAccount
+userAccount.user.append(john!)
+userAccount.printUser()
+// ลบ john ออกจาก userAccount เพราะกำหนดให้ john เป็น nil ในภายหลัง
+userAccount.user.removeLast()
+print("\nremove john from userAccount\n")
 
 var productApple = fruitMarket.getProductInMarket(name: "Apple")
 print(productApple!)
@@ -503,7 +489,7 @@ print(john!.wallet!.amount)
 
 
 var secondMarket = Market<Product>()
-secondMarket.product.append(Product(name: "Banana", price: 50))
+secondMarket.addProduct(Product(name: "Banana", price: 50))
 var newMarket = fruitMarket + secondMarket
 print(newMarket.product)
 
@@ -523,4 +509,3 @@ print(john?.name)
 print("===============")
 john = nil
 print("===============")
-
