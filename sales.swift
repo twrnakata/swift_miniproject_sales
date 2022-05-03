@@ -333,12 +333,12 @@ extension Market{
 
 
 // สร้าง protocol ที่กำหนดข้อมูลของ User
-protocol UserProtocol{
+// กำหนด level ให้เป็น open สามารถเข้าถึงได้จาก source file ใดๆ ก็ได้
+public protocol UserProtocol{
     var name: String { get set }
 
     func getName() -> String
 }
-
 
 struct BasicUser: UserProtocol{
     var name: String
@@ -371,18 +371,50 @@ class Customer: UserProtocol{
     }
 }
 
-struct Account{
-    var user: [UserProtocol]
+fileprivate class Account: UserProtocol{
+    private var user: [UserProtocol]
+    var name: String
     
     init(){
-        user = []
+        self.name = "Account"
+        self.user = []
     }
-
-    func printUser() -> Void{
-        for person in self.user{
-            print(person.getName(), terminator: " ")
+    convenience init(user: UserProtocol){
+        self.init()
+        if(!(user.getName().isEmpty)){
+            self.user.append(user)
         }
-        print("")
+    }
+    convenience init(user newUser: UserProtocol...){
+        self.init(user: newUser)
+    }
+    convenience init(user: [UserProtocol]){
+        self.init()
+        for acc in user{
+            if(!(acc.getName().isEmpty)){
+                self.user.append(acc)
+            }
+        }
+    }
+    // ส่งชื่อที่กำหนดไว้ในคลาสและชื่อสมาชิกที่เก็บไว้ออกไป
+    func getName() -> String{
+        var result = self.name + ":"
+        for acc in user{
+            result += " \(acc.getName())"
+        }
+        return result
+    }
+    func addUser(_ newUser: UserProtocol){
+        if(!(newUser.getName().isEmpty)){
+            self.user.append(newUser)
+        }
+    }
+    func removeUser(name: String){
+        for (index, acc) in user.enumerated(){
+            if(acc.getName() == name){
+                self.user.remove(at: index)
+            }
+        }
     }
 }
 
@@ -394,7 +426,30 @@ extension UserProtocol{
 }
 
 
+@resultBuilder
+struct AccountBuilder{
+    static func buildBlock(_ components: UserProtocol...) -> UserProtocol{
+        Account(user: components)
+    }
+    static func buildBlock(_ components: [UserProtocol]) -> UserProtocol{
+        Account(user: components)
+    }
+    static func buildEither(first: UserProtocol) -> UserProtocol {
+        return first
+    }
+    static func buildEither(second: UserProtocol) -> UserProtocol {
+        return second
+    }
+}
 
+func showAccount(user: () -> UserProtocol) -> Void{
+    user()
+}
+
+@AccountBuilder
+func makeAccount(with newUser: UserProtocol...) -> UserProtocol{
+    Account(user: newUser)
+}
 
 
 class CustomerWallet: MoneyProtocol{
@@ -456,9 +511,9 @@ fruitMarket.productDetail(number: 1)
 
 var kaning = BasicUser(name: "Kaning")
 
-var userAccount = Account()
-userAccount.user.append(kaning)
-userAccount.printUser()
+fileprivate var userAccount = Account()
+userAccount.addUser(kaning)
+print(userAccount.getName())
 print("before add John")
 
 func createThaiBaht(currency: String, amount: Float, owner: Customer) -> some MoneyProtocol{
@@ -472,11 +527,12 @@ var thaiBahtForJohn: CustomerWallet? = (createThaiBaht(currency: "Baht", amount:
 john?.wallet = thaiBahtForJohn
 
 // ทดสอบใส่ john เข้าไปใน userAccount
-userAccount.user.append(john!)
-userAccount.printUser()
+userAccount.addUser(john!)
+print(userAccount.getName())
 // ลบ john ออกจาก userAccount เพราะกำหนดให้ john เป็น nil ในภายหลัง
-userAccount.user.removeLast()
+userAccount.removeUser(name: "John")
 print("\nremove john from userAccount\n")
+print(userAccount.getName())
 
 var productApple = fruitMarket.getProductInMarket(name: "Apple")
 print(productApple!)
