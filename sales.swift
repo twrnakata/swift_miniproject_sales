@@ -9,16 +9,13 @@ protocol ProductProtocol: PriceProtocol{
     var productName: String { get }
     var price: Float { get }
 
+    // protocol ระบุ non-failable init
+    // ตัว type adopt จะต้องสร้างเป็น non-faiable หรือ failable ที่เป็น implicitly unwrapped failable init
     init!(name: String)
     init(name: String, price: Float)
 
-    // แต่ถ้า protocol ระบุเป็น non-failable init
-    //ตัว type adopt จะต้องสร้างเป็น non-faiable หรือ failable ที่เป็น implicitly unwrapped failable init
-
-
     func getProductName() -> String
     func getProductPrice() -> Float
-    // mutating func addProduct(name: String, price: Float)
 }
 
 
@@ -48,15 +45,12 @@ protocol MarketProtocol{
 }
 
 
-
 // ===========================================
 // สร้าง protocol สำหรับ extension ที่ตัว array ไว้เพื่อจัดการข้อมูลที่เป็น array
 protocol ProductDetailToArrayProtocol: Sequence{
     var count: Int { get }
     func haveThis(_ product: String) -> Bool
     func allProduct() -> Void
-    // associatedtype Item
-    // subscript(i: Int) -> Item { get }
 }
 
 // extension ProductDetailToArrayProtocol ให้กับ Array
@@ -83,12 +77,13 @@ extension Array: ProductDetailToArrayProtocol where Element: ProductProtocol{
     }
 
     func allProduct(){
+        print("\n=== All Product ===")
         for (index, item) in self.enumerated(){
-            print("\nProduct No.\(index + 1)")
+            print("Product No.\(index + 1)")
             print("Product Name: \(item.getProductName())")
             print("Product Price(Cost): \(item.getProductPrice())")
-            // print("===")
         }
+            print("=== All Product ===\n")
     }
 }
 
@@ -98,19 +93,11 @@ extension Array: ProductDetailToArrayProtocol where Element: ProductProtocol{
 
 
 
-
-// =================================
-
 // ใช้แค่คิดราคาสินค้า ฉะนั้นจะสนใจแต่ตัวเลข เลยไม่จำเป็นต้องรู้ชื่อสินค้า
 // ทำ protocol เหมือนเป็น type ตัวนึง ที่ช่วยเก็บสิ่งของไว้ใช้งานภายหลังร่วมกัน
 protocol CalculatorProtocol{
-    // associatedtype DataType: ProductProtocol where DataType.price == DataType
-    // associatedtype DataType
     func calculatePrice<Item: ProductProtocol>(of: Item) -> Float
-
-    // mutating func changeCalculate(to: Calculator)
 }
-
 
 // สร้าง Calculator จาก opaque function
 func createCalculator(withVat value: Float) -> some CalculatorProtocol{
@@ -127,7 +114,6 @@ struct Calculator: CalculatorProtocol{
         return (item.getProductPrice() * vat)
     }
 }
-
 
 
 struct Product: ProductProtocol{
@@ -285,6 +271,9 @@ class Market<Item: ProductProtocol>: MarketProtocol{
         }
         return result
     }
+    func allProduct() -> Void{
+        self.product.allProduct()
+    }
 }
 
 // สร้าง operator +++ ไว้ใช้ใน Market
@@ -329,6 +318,45 @@ extension Market{
     }
 }
 
+// สร้าง statuc ไว้ระบุสถานะให้กับ User
+struct Status{
+    var name: String
+    var value: Value
+
+    enum Value{
+        case bool(Bool)
+        case int(Int)
+    }
+
+    init(_ name: String, _ value: Value){
+        self.name = name
+        self.value = value
+    }
+}
+
+
+@resultBuilder
+struct StatusBuilder{
+    // รับ Statuc เข้ามาได้หลายตัวแล้วเอามาจอยกัน
+    static func buildBlock(_ component: [Status]...) -> [Status]{
+        Array(component.joined())
+    }
+    static func buildExpression(_ dataSet: (name: String, bool: Bool)) -> [Status]{
+        [Status(dataSet.name, .bool(dataSet.bool))]
+    }
+    static func buildExpression(_ dataSet: (name: String, int: Int)) -> [Status]{
+        [Status(dataSet.name, .int(dataSet.int))]
+    }
+    // ถ้ารับเข้ามาเป็น Status จะคืนเป็น Array
+    static func buildExpression(_ status: Status) -> [Status]{
+        [status]
+    }
+    
+}
+
+func makeStatus(@StatusBuilder _ status: () -> [Status]) -> [Status]{
+    status()
+}
 
 
 
@@ -342,6 +370,13 @@ public protocol UserProtocol{
 
 struct BasicUser: UserProtocol{
     var name: String
+    var status: [Status]
+
+    init(name: String,
+        @StatusBuilder builder: () -> [Status]){
+            self.name = name
+            self.status = builder()
+    }
 
     func getName() -> String{
         return self.name
@@ -426,31 +461,6 @@ extension UserProtocol{
 }
 
 
-@resultBuilder
-struct AccountBuilder{
-    static func buildBlock(_ components: UserProtocol...) -> UserProtocol{
-        Account(user: components)
-    }
-    static func buildBlock(_ components: [UserProtocol]) -> UserProtocol{
-        Account(user: components)
-    }
-    static func buildEither(first: UserProtocol) -> UserProtocol {
-        return first
-    }
-    static func buildEither(second: UserProtocol) -> UserProtocol {
-        return second
-    }
-}
-
-func showAccount(user: () -> UserProtocol) -> Void{
-    user()
-}
-
-@AccountBuilder
-func makeAccount(with newUser: UserProtocol...) -> UserProtocol{
-    Account(user: newUser)
-}
-
 
 class CustomerWallet: MoneyProtocol{
     var currency: String
@@ -485,6 +495,10 @@ class CustomerWallet: MoneyProtocol{
     }
 }
 
+// ====================================================
+// end protocol, struct, class
+// ====================================================
+
 
 // กำหนด type เป็น Product
 var fruitMarket = Market<Product>()
@@ -496,10 +510,12 @@ fruitMarket.addProduct(mango)
 fruitMarket.addProduct(apple)
 
 
-
 for item in fruitMarket.product{
     print(item)
 }
+print("or")
+fruitMarket.product.allProduct()
+
 
 
 
@@ -509,7 +525,12 @@ fruitMarket.calculator = cal
 fruitMarket.productDetail(number: 1)
 
 
-var kaning = BasicUser(name: "Kaning")
+var kaning = BasicUser(name: "Kaning"){
+    Status("Online", .bool(false))
+}
+for status in kaning.status{
+    print(status)
+}
 
 fileprivate var userAccount = Account()
 userAccount.addUser(kaning)
@@ -534,28 +555,41 @@ userAccount.removeUser(name: "John")
 print("\nremove john from userAccount\n")
 print(userAccount.getName())
 
+
 var productApple = fruitMarket.getProductInMarket(name: "Apple")
 print(productApple!)
 
+// แสดงเงินของ john ก่อนซื้อสินค้า
 print(john!.wallet!.amount)
 fruitMarket.sell(product: productApple!, to: &john!.wallet!)
-fruitMarket.sell(name: "mango", to: &john!.wallet!)
-print("mango price: \(fruitMarket.getProductPrice(name: "mango"))")
+
+// เรียกดูเงิน john หลังซื้อสินค้า 1 ชิ้น
 print(john!.wallet!.amount)
+fruitMarket.sell(name: "mango", to: &john!.wallet!)
 
+// เรียกใช้ฟังก์ชั่นแสดงราคาสินค้า
+print("mango price: \(fruitMarket.getProductPrice(name: "mango"))")
 
+// เรียกดูเงิน john หลังซื้อสินค้าไป 2 ชิ้น
+print(john!.wallet!.amount)
+print("")
+
+// สร้าง market ขึ้นมาอีกตัวเพื่อทดลองใช้ operator
 var secondMarket = Market<Product>()
 secondMarket.addProduct(Product(name: "Banana", price: 50))
+
+// ใช้ operator รวมสินค้าทั้งสองร้านเข้าด้วยกัน
 var newMarket = fruitMarket + secondMarket
-print(newMarket.product)
+newMarket.product.allProduct()
 
 print(secondMarket == newMarket)
 
-print(secondMarket.product)
-secondMarket+++
-print(secondMarket.product)
+newMarket.allProduct()
+// ใช้ operator เพิ่มราคาสินค้าขึ้นอีก 1 เท่า
+newMarket+++
+newMarket.allProduct()
 
-
+// คืนพื้นที่ให้เงินบาท
 thaiBahtForJohn = nil
 print(thaiBahtForJohn?.owner.name) // nil
 print(john?.wallet?.amount)
